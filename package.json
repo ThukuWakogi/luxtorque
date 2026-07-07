@@ -6,7 +6,10 @@
   "scripts": {
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "db:smoke": "bash scripts/db-smoke-test.sh",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down"
   },
   "keywords": [],
   "author": "",
