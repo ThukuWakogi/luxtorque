@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(uuid(7))
+  name          String
+  email         String
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  sessions      Session[]
+  accounts      Account[]
+
+  orgId             String? @map("org_id")
+  role              String? @default("STAFF") @map("role")
+  phone             String? @map("phone")
+  status            String? @default("ACTIVE") @map("status")
+  preferredBranchId String? @map("preferred_branch_id")
+
+  // ── LuxTorque relations (added after CLI generation) ──────────────────────
+  organisation      Organisation?          @relation(fields: [orgId], references: [id])
+  preferredBranch   Branch?                @relation("UserPreferredBranch", fields: [preferredBranchId], references: [id])
+  branchAssignments StaffBranchAssignment[]
+
+  @@unique([email])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid(7))
+  expiresAt DateTime @map("expires_at")
+  token     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+  userId    String @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid(7))
+  accountId             String @map("account_id")
+  providerId            String @map("provider_id")
+  userId                String @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String? @map("access_token")
+  refreshToken          String? @map("refresh_token")
+  idToken               String? @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid(7))
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LUXTORQUE DOMAIN TABLES
+// All tables must carry org_id per SRS §2.1 and NFR-SEC-05 — no exceptions.
+// Branch-scoped tables must also carry branch_id.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Organisation {
+  id              String      @id @default(uuid(7))
+  name            String
+  logoUrl         String? @map("logo_url")
+  defaultCurrency String      @default("KES") @db.VarChar(3) @map("default_currency")
+  defaultTaxRate  Decimal     @default(0) @db.Decimal(5, 4) @map("default_tax_rate")
+  billingPlan     BillingPlan @default(FREE) @map("billing_plan")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  branches Branch[]
+  users    User[]
+
+  @@map("organisations")
+}
+
+model Branch {
+  id               String       @id @default(uuid(7))
+  orgId            String @map("org_id")
+  name             String
+  branchCode       String @map("branch_code")
+  address          String
+  latitude         Decimal?     @db.Decimal(10, 7)
+  longitude        Decimal?     @db.Decimal(10, 7)
+  timeZone         String @map("time_zone")
+  // ── Multi-currency fields — apply TASK-005 decision here (see step 9) ────
+  currencyOverride String?      @db.VarChar(3) @map("currency_override")
+  taxRateOverride  Decimal?     @db.Decimal(5, 4) @map("tax_rate_override")
+  // ─────────────────────────────────────────────────────────────────────────
+  status           BranchStatus @default(ACTIVE) @map("status")
+  openingHours     Json? @map("opening_hours")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  organisation     Organisation           @relation(fields: [orgId], references: [id])
+  staffAssignments StaffBranchAssignment[]
+  preferredByUsers User[]                 @relation("UserPreferredBranch")
+
+  @@unique([orgId, branchCode])
+  @@map("branches")
+}
+
+model StaffBranchAssignment {
+  id             String    @id @default(uuid(7))
+  orgId          String @map("org_id")
+  branchId       String @map("branch_id")
+  userId         String @map("user_id")
+  role           UserRole @map("role")
+  isHomeBranch   Boolean   @default(false) @map("is_home_branch")
+  coverStartDate DateTime? @map("cover_start_date")
+  coverEndDate   DateTime? @map("cover_end_date")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branchId, role])
+  @@map("staff_branch_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  BRANCH_MANAGER
+  STAFF
+  TECHNICIAN
+  SALES_AGENT
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+  TEMPORARILY_CLOSED
+}
+
+enum BillingPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
