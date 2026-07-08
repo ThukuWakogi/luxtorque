@@ -9,7 +9,10 @@
     "typecheck": "pnpm -r typecheck",
     "db:smoke": "bash scripts/db-smoke-test.sh",
     "db:up": "docker compose up -d postgres",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:seed": "pnpm --filter @luxtorque/api exec prisma db seed",
+    "db:migrate": "pnpm --filter @luxtorque/api exec prisma migrate dev",
+    "db:reset": "pnpm --filter @luxtorque/api exec prisma migrate reset --force"
   },
   "keywords": [],
   "author": "",
@@ -21,5 +24,8 @@
       "onFail": "download"
     }
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
 }

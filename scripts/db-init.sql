@@ -12,6 +12,7 @@ $$;
 
 GRANT CONNECT ON DATABASE luxtorque_dev TO luxtorque_app;
 GRANT USAGE ON SCHEMA public TO luxtorque_app;
-
--- Note: table-level grants are applied during migrations, not here.
--- This file only provisions the role and extensions.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO luxtorque_app;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO luxtorque_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE luxtorque IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO luxtorque_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE luxtorque IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO luxtorque_app;
